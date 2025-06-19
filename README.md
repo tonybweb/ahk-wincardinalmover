@@ -12,7 +12,7 @@ The center of the window is assigned to moving the window. The first 20% from th
 Try it out yourself. Run the included `demo.ahk` file for a GUI which dynamically shows the active hotkey regions.
 
  ## Example Usage
-The "forward" mouse button on your mouse will activate WinCardinalMover. Holding `Ctrl` after first holding `XButton2` will add taskbar constraining.
+The "forward" mouse button on your mouse will activate WinCardinalMover. Holding `Ctrl` after first holding `XButton2` will add taskbar constraining. Double clicking `XButton2` will trigger the corresponding aero snap emulation.
  ```ahk
 #Requires AutoHotkey v2
 #Include <ahk-wincardinalmove\WinCardinalMover>

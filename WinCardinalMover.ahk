@@ -115,32 +115,24 @@ class WinCardinalMover {
       switch this.direction {
         case this.N:
           UpdateNorthConstraint()
-
         case this.S:
           UpdateSouthConstraint()
-
         case this.E:
           UpdateEastConstraint()
-
         case this.W:
           UpdateWestConstraint()
-
         case this.NE:
           UpdateNorthConstraint()
           UpdateEastConstraint()
-
         case this.NW:
           UpdateNorthConstraint()
           UpdateWestConstraint()
-
         case this.SE:
           UpdateSouthConstraint()
           UpdateEastConstraint()
-
         case this.SW:
           UpdateSouthConstraint()
           UpdateWestConstraint()
-
         default:
           maxX := A_ScreenWidth - this.win.w - this.win.offsets.right
           maxY := A_ScreenHeight - this.win.h - this.win.offsets.bottom

@@ -1,21 +1,28 @@
 #Requires AutoHotkey v2
 #Include WinCardinalMover.ahk
 
-gooey := Gui("+Resize","WinCardinalMover Demo")
-gooey.SetFont("s16 cFFFFFF")
+WS_EX_COMPOSITED := 0x02000000, WS_EX_LAYERED := 0x00080000
+
+gooey := Gui("-Caption +E" WS_EX_COMPOSITED " +E" WS_EX_LAYERED, "WinCardinalMover Demo")
 gooey.MarginX := gooey.MarginY := 0
-gooey.AddText("w640 h480 Background004400 Center 0x200 vmove", "Move")
+gooey.SetFont("s16 cFFFFFF")
+
+gooey.AddText("BackgroundFF0000 Center w15 h16 vclose", "X")
+
+gooey.AddText("Background000044 Center 0x200 vnw", "NW")
+gooey.AddText("Background000044 Center 0x200 vne", "NE")
+gooey.AddText("Background000044 Center 0x200 vsw", "SW")
+gooey.AddText("Background000044 Center 0x200 vse", "SE")
 
 gooey.AddText("Background440000 Center 0x200 vn", "N")
 gooey.AddText("Background440000 Center 0x200 vs", "S")
 gooey.AddText("Background440000 Center 0x200 vw", "W")
 gooey.AddText("Background440000 Center 0x200 ve", "E")
 
-gooey.AddText("Background000044 Center 0x200 vnw", "NW")
-gooey.AddText("Background000044 Center 0x200 vne", "NE")
-gooey.AddText("Background000044 Center 0x200 vsw", "SW")
-gooey.AddText("Background000044 Center 0x200 vse", "SE")
-gooey.OnEvent("Close", (*) => ExitApp())
+gooey.AddText("w640 h480 Background004400 Center 0x200 vmove", "Move" )
+gooey["close"].SetFont("s10")
+gooey["close"].OnEvent("Click", (*) => ExitApp())
+
 gooey.OnEvent("Size", SizeHandler)
 
 gooey.Show("w640 h480")
@@ -46,9 +53,12 @@ SizeHandler(guiObj, minMax, width, height) {
         ctrl.move(x2,y2,x1,y1)
       case "sw":
         ctrl.move(0,y2,x1,y1)
+      case "close":
+        ctrl.GetPos(,,&ctrlW)
+        ctrl.move(width - ctrlW,0)
     }
-    ctrl.Redraw()
   }
 }
 
+Esc::ExitApp()
 XButton2::WinCardinalMover("XButton2", "Ctrl")

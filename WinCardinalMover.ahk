@@ -10,23 +10,28 @@
  * @author tonybweb
  * @link (https://github.com/tonybweb/ahk-wincardinalmover)
  * @date 2025/06/18
- * @version 1.0.1
+ * @version 1.1.0
  *
  * REMARKS
- * SetWinDelay impacts the speed of WinMove, the default value is 100ms
- * which is vethis.mouse.rY slow from a framerate persiective.
+ * - SetWinDelay impacts the speed of WinMove, the default value of 100ms
+ *   is far too slow from a framerate perspective.
  *   WIN_DELAY of 0 is no delay but feels too fast for some windows
  *     (can produce weird artifacts on resize)
  *   Perhaps a WIN_DELAY value tuned to monitor refresh rate is best?
  *   1000 / 120hz = 8.33, 1000 / 60hz = 16.66, etc. 1 seems fine though.
- * Window offets and screen edge handling behave differently per app
- * setWindowOffsets attempts to reconcile the differences. All scenarios
- * may not be accounted for yet.
+ * - Window offets and screen edge handling behave differently per app
+ *   setWindowOffsets attempts to reconcile the differences. All
+ *   scenarios may not be accounted for yet.
+ * - DOUBLE_CLICK_DELAY can be adjusted to fine tune the double click
+*    speed
+ * - TASKBAR_HEIGHT defines the taskbar constraint while holding Ctrl or
+ *   your defined optionKey
  ***********************************************************************/
 
 class WinCardinalMover {
   static N := 1, S := 2, W := 3, E := 4,
     NE := 5, SE := 6, NW := 7, SW := 8,
+    DOUBLE_CLICK_DELAY := 250,
     DWMWA_EXTENDED_FRAME_BOUNDS := 9,
     EDGE_MULTIPLIER := 0.20,
     TASKBAR_HEIGHT := 40,
@@ -35,6 +40,7 @@ class WinCardinalMover {
   static win := {},
     mouse := {},
     hk := "",
+    doubleClickEpoch := 0,
     optionKey := "Ctrl",
     on := 0
 
@@ -46,20 +52,54 @@ class WinCardinalMover {
     CoordMode("Mouse", "Screen")
     this.hk := hk
     this.optionKey := optionKey
+
+    MouseGetPos(&x, &y, &hwnd), this.mouse.startingX := x, this.mouse.startingY := y, this.win.hwnd := hwnd
+    WinGetPos(&x, &y, &w, &h, this.win.hwnd), this.win.x := x, this.win.y := y, this.win.w := w, this.win.h := h
+
+    WinActivate(this.win.hwnd)
+    this.setWindowOffsets()
+    this.direction := this.findWindowCompassDirection()
+
+    if (this.doubleClickEpoch && A_TickCount < this.doubleClickEpoch) {
+      this.doubleClicked()
+      return
+    } else {
+      this.doubleClickEpoch := A_TickCount + this.DOUBLE_CLICK_DELAY
+    }
+
     if (! this.on) {
       SetWinDelay(this.WIN_DELAY)
       this.on := 1
 
-      MouseGetPos(&x, &y, &hwnd), this.mouse.startingX := x, this.mouse.startingY := y, this.win.hwnd := hwnd
-      WinGetPos(&x, &y, &w, &h, this.win.hwnd), this.win.x := x, this.win.y := y, this.win.w := w, this.win.h := h
-      this.setWindowOffsets()
-
-      WinActivate(this.win.hwnd)
-      this.direction := this.findWindowCompassDirection()
       this.moveOrSizeWindow()
 
       this.on := 0
       SetWinDelay(this.DEFAULT_WIN_DELAY)
+    }
+  }
+
+  static doubleClicked() {
+    static halfHeight := A_ScreenHeight / 2, halfWidth := A_ScreenWidth / 2
+
+    switch (this.direction) {
+      case this.N:
+        WinMove(this.win.offsets.left, this.win.offsets.top, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, halfHeight, this.win.hwnd)
+      case this.S:
+        WinMove(this.win.offsets.left, halfHeight - this.win.offsets.bottom, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, halfHeight, this.win.hwnd)
+      case this.W:
+        WinMove(this.win.offsets.left, this.win.offsets.top, halfWidth, A_ScreenHeight - this.win.offsets.bottom, this.win.hwnd)
+      case this.E:
+        WinMove(halfWidth, this.win.offsets.top, halfWidth - this.win.offsets.right, A_ScreenHeight - this.win.offsets.bottom, this.win.hwnd)
+      case this.NE:
+        WinMove(halfWidth, this.win.offsets.top, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+      case this.NW:
+        WinMove(this.win.offsets.left, this.win.offsets.top, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+      case this.SE:
+        WinMove(halfWidth, halfHeight, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+      case this.SW:
+        WinMove(this.win.offsets.left, halfHeight, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+      default:
+        WinMove(halfWidth / 2, halfHeight / 2, halfWidth, halfHeight, this.win.hwnd)
     }
   }
 
@@ -102,20 +142,20 @@ class WinCardinalMover {
           UpdateWestConstraint()
 
         default:
-          maxX := A_ScreenWidth - this.win.w
+          maxX := A_ScreenWidth - this.win.w - this.win.offsets.right
           maxY := A_ScreenHeight - this.win.h - this.win.offsets.bottom
           if (GetKeyState(this.optionKey)) {
             maxY -= this.TASKBAR_HEIGHT
           }
 
-          moveArgs[X_INDEX] := Min(Max(0, this.win.x + deltaX), maxX)
-          moveArgs[Y_INDEX] := Min(Max(0, this.win.y + deltaY), maxY)
+          moveArgs[X_INDEX] := Min(Max(this.win.offsets.left, this.win.x + deltaX), maxX)
+          moveArgs[Y_INDEX] := Min(Max(this.win.offsets.top, this.win.y + deltaY), maxY)
       }
       WinMove(moveArgs*)
     }
 
     UpdateNorthConstraint() {
-      moveArgs[Y_INDEX] := Max(this.win.y + deltaY, 0)
+      moveArgs[Y_INDEX] := Max(this.win.y + deltaY, this.win.offsets.top)
       moveArgs[H_INDEX] := Min(this.win.h - deltaY, this.win.h + this.win.y)
     }
     UpdateSouthConstraint() {
@@ -124,10 +164,10 @@ class WinCardinalMover {
       moveArgs[H_INDEX] := this.win.h + Min(deltaY, allowedHeight - (this.win.h + this.win.y))
     }
     UpdateEastConstraint() {
-      moveArgs[W_INDEX] := Min(this.win.w + deltaX, A_ScreenWidth - this.win.x)
+      moveArgs[W_INDEX] := Min(this.win.w + deltaX, A_ScreenWidth - this.win.x - this.win.offsets.right)
     }
     UpdateWestConstraint() {
-      moveArgs[X_INDEX] := Max(this.win.x + deltaX + this.win.offsets.left, this.win.offsets.left)
+      moveArgs[X_INDEX] := Max(this.win.x + deltaX, this.win.offsets.left)
       moveArgs[W_INDEX] := Min(this.win.w - deltaX, this.win.x + this.win.w)
     }
   }

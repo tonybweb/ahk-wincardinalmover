@@ -9,8 +9,8 @@
  *
  * @author tonybweb
  * @link (https://github.com/tonybweb/ahk-wincardinalmover)
- * @date 2025/06/18
- * @version 1.1.0
+ * @date 2025/06/19
+ * @version 1.2.0
  *
  * REMARKS
  * - SetWinDelay impacts the speed of WinMove, the default value of 100ms
@@ -26,6 +26,8 @@
 *    speed
  * - TASKBAR_HEIGHT defines the taskbar constraint while holding Ctrl or
  *   your defined optionKey
+ * - See the README.md for information on how to customize the snapping
+ *   feature
  ***********************************************************************/
 
 class WinCardinalMover {
@@ -34,6 +36,7 @@ class WinCardinalMover {
     DOUBLE_CLICK_DELAY := 250,
     DWMWA_EXTENDED_FRAME_BOUNDS := 9,
     EDGE_MULTIPLIER := 0.20,
+    HALF_HEIGHT := A_ScreenHeight / 2, HALF_WIDTH := A_ScreenWidth / 2,
     TASKBAR_HEIGHT := 40,
     WIN_DELAY := 1
 
@@ -42,16 +45,16 @@ class WinCardinalMover {
     hk := "",
     doubleClickEpoch := 0,
     optionKey := "Ctrl",
-    on := 0
+    on := 0,
+    snaps := Map()
 
   static __New() {
     this.DEFAULT_WIN_DELAY := A_WinDelay ;Default is 100
   }
 
   static Call(hk, optionKey := "Ctrl") {
-    CoordMode("Mouse", "Screen")
-    this.hk := hk
-    this.optionKey := optionKey
+    CoordMode("Mouse", "Screen"), CoordMode("Pixel", "Screen")
+    this.hk := hk, this.optionKey := optionKey
 
     MouseGetPos(&x, &y, &hwnd), this.mouse.startingX := x, this.mouse.startingY := y, this.win.hwnd := hwnd
     WinGetPos(&x, &y, &w, &h, this.win.hwnd), this.win.x := x, this.win.y := y, this.win.w := w, this.win.h := h
@@ -63,9 +66,8 @@ class WinCardinalMover {
     if (this.doubleClickEpoch && A_TickCount < this.doubleClickEpoch) {
       this.doubleClicked()
       return
-    } else {
-      this.doubleClickEpoch := A_TickCount + this.DOUBLE_CLICK_DELAY
     }
+    this.doubleClickEpoch := A_TickCount + this.DOUBLE_CLICK_DELAY
 
     if (! this.on) {
       SetWinDelay(this.WIN_DELAY)
@@ -73,33 +75,38 @@ class WinCardinalMover {
 
       this.moveOrSizeWindow()
 
-      this.on := 0
       SetWinDelay(this.DEFAULT_WIN_DELAY)
+      this.on := 0
     }
   }
 
   static doubleClicked() {
-    static halfHeight := A_ScreenHeight / 2, halfWidth := A_ScreenWidth / 2
-
     switch (this.direction) {
       case this.N:
-        WinMove(this.win.offsets.left, this.win.offsets.top, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, halfHeight, this.win.hwnd)
+        Snap("north", [this.win.offsets.left, this.win.offsets.top, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, this.HALF_HEIGHT])
       case this.S:
-        WinMove(this.win.offsets.left, halfHeight - this.win.offsets.bottom, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, halfHeight, this.win.hwnd)
+        Snap("south", [this.win.offsets.left, this.HALF_HEIGHT - this.win.offsets.bottom, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, this.HALF_HEIGHT])
       case this.W:
-        WinMove(this.win.offsets.left, this.win.offsets.top, halfWidth, A_ScreenHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("west", [this.win.offsets.left, this.win.offsets.top, this.HALF_WIDTH, A_ScreenHeight - this.win.offsets.bottom])
       case this.E:
-        WinMove(halfWidth, this.win.offsets.top, halfWidth - this.win.offsets.right, A_ScreenHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("east", [this.HALF_WIDTH, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.right, A_ScreenHeight - this.win.offsets.bottom])
       case this.NE:
-        WinMove(halfWidth, this.win.offsets.top, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("northeast", [this.HALF_WIDTH, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.right, this.HALF_HEIGHT - this.win.offsets.bottom])
       case this.NW:
-        WinMove(this.win.offsets.left, this.win.offsets.top, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("northwest", [this.win.offsets.left, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.right, this.HALF_HEIGHT - this.win.offsets.bottom])
       case this.SE:
-        WinMove(halfWidth, halfHeight, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("southeast", [this.HALF_WIDTH, this.HALF_HEIGHT, this.HALF_WIDTH - this.win.offsets.right, this.HALF_HEIGHT - this.win.offsets.bottom])
       case this.SW:
-        WinMove(this.win.offsets.left, halfHeight, halfWidth - this.win.offsets.right, halfHeight - this.win.offsets.bottom, this.win.hwnd)
+        Snap("southwest", [this.win.offsets.left, this.HALF_HEIGHT, this.HALF_WIDTH - this.win.offsets.right, this.HALF_HEIGHT - this.win.offsets.bottom])
       default:
-        WinMove(halfWidth / 2, halfHeight / 2, halfWidth, halfHeight, this.win.hwnd)
+        Snap("move", [this.HALF_WIDTH / 2, this.HALF_HEIGHT / 2, this.HALF_WIDTH, this.HALF_HEIGHT])
+    }
+    Snap(direction, moveArgs) {
+      if (this.snaps.Has(direction)) {
+        moveArgs := this.snaps[direction](this)
+      }
+      moveArgs.push(this.win.hwnd)
+      WinMove(moveArgs*)
     }
   }
 
@@ -117,10 +124,10 @@ class WinCardinalMover {
           UpdateNorthConstraint()
         case this.S:
           UpdateSouthConstraint()
-        case this.E:
-          UpdateEastConstraint()
         case this.W:
           UpdateWestConstraint()
+        case this.E:
+          UpdateEastConstraint()
         case this.NE:
           UpdateNorthConstraint()
           UpdateEastConstraint()
@@ -155,12 +162,12 @@ class WinCardinalMover {
       allowedHeight := GetKeyState(this.optionKey) ? height - this.TASKBAR_HEIGHT : height
       moveArgs[H_INDEX] := this.win.h + Min(deltaY, allowedHeight - (this.win.h + this.win.y))
     }
-    UpdateEastConstraint() {
-      moveArgs[W_INDEX] := Min(this.win.w + deltaX, A_ScreenWidth - this.win.x - this.win.offsets.right)
-    }
     UpdateWestConstraint() {
       moveArgs[X_INDEX] := Max(this.win.x + deltaX, this.win.offsets.left)
       moveArgs[W_INDEX] := Min(this.win.w - deltaX, this.win.x + this.win.w)
+    }
+    UpdateEastConstraint() {
+      moveArgs[W_INDEX] := Min(this.win.w + deltaX, A_ScreenWidth - this.win.x - this.win.offsets.right)
     }
   }
 
@@ -213,7 +220,8 @@ class WinCardinalMover {
       "Ptr", this.win.hwnd,
       "UInt", this.DWMWA_EXTENDED_FRAME_BOUNDS,
       "Ptr", extendedRect,
-      "UInt", 16)
+      "UInt", 16
+    )
 
     if (hResult != 0) {
       return
@@ -230,5 +238,10 @@ class WinCardinalMover {
       right: extRight - (this.win.x + this.win.w),
       bottom: extBottom - (this.win.y + this.win.h),
     }
+  }
+
+  static snap(direction, callback) {
+    this.snaps[direction] := callback
+    return this
   }
 }

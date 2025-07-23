@@ -87,9 +87,9 @@ class WinCardinalMover {
       case this.S:
         Snap("south", [this.win.offsets.left, this.HALF_HEIGHT - this.win.offsets.bottom, A_ScreenWidth - this.win.offsets.left - this.win.offsets.right, this.HALF_HEIGHT])
       case this.W:
-        Snap("west", [this.win.offsets.left, this.win.offsets.top, this.HALF_WIDTH, A_ScreenHeight - this.win.offsets.bottom])
+        Snap("west", [this.win.offsets.left, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.x, A_ScreenHeight - this.win.offsets.bottom])
       case this.E:
-        Snap("east", [this.HALF_WIDTH, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.right, A_ScreenHeight - this.win.offsets.bottom])
+        Snap("east", [this.HALF_WIDTH + this.win.offsets.left, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.x, A_ScreenHeight - this.win.offsets.bottom])
       case this.NE:
         Snap("northeast", [this.HALF_WIDTH, this.win.offsets.top, this.HALF_WIDTH - this.win.offsets.right, this.HALF_HEIGHT - this.win.offsets.bottom])
       case this.NW:
@@ -164,7 +164,7 @@ class WinCardinalMover {
     }
     UpdateWestConstraint() {
       moveArgs[X_INDEX] := Max(this.win.x + deltaX, this.win.offsets.left)
-      moveArgs[W_INDEX] := Min(this.win.w - deltaX, this.win.x + this.win.w)
+      moveArgs[W_INDEX] := Min(this.win.w - deltaX, this.win.x + this.win.w - this.win.offsets.left)
     }
     UpdateEastConstraint() {
       moveArgs[W_INDEX] := Min(this.win.w + deltaX, A_ScreenWidth - this.win.x - this.win.offsets.right)
@@ -214,6 +214,8 @@ class WinCardinalMover {
       top: 0,
       right: 0,
       bottom: 0,
+      x: 0,
+      y: 0
     }
     extendedRect := Buffer(16, 0)
     hResult := DllCall("dwmapi.dll\DwmGetWindowAttribute",
@@ -238,6 +240,8 @@ class WinCardinalMover {
       right: extRight - (this.win.x + this.win.w),
       bottom: extBottom - (this.win.y + this.win.h),
     }
+    this.win.offsets.x := this.win.offsets.left + this.win.offsets.right
+    this.win.offsets.y := this.win.offsets.top + this.win.offsets.bottom
   }
 
   static snap(direction, callback) {

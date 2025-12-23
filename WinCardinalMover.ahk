@@ -107,7 +107,9 @@ class WinCardinalMover {
         moveArgs := this.snaps[direction](this)
       }
       moveArgs.push(this.win.hwnd)
+      this.winNotifyEvent.moveSizeStart()
       WinMove(moveArgs*)
+      this.winNotifyEvent.moveSizeEnd()
     }
   }
 

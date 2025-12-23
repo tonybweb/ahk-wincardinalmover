@@ -102,6 +102,7 @@ class WinCardinalMover {
         Snap("move", [this.HALF_WIDTH / 2, this.HALF_HEIGHT / 2, this.HALF_WIDTH, this.HALF_HEIGHT])
     }
     Snap(direction, moveArgs) {
+      WinRestore(this.win.hwnd)
       if (this.snaps.Has(direction)) {
         moveArgs := this.snaps[direction](this)
       }
@@ -114,6 +115,7 @@ class WinCardinalMover {
     static X_INDEX := 1, Y_INDEX := 2, W_INDEX := 3, H_INDEX := 4
     moveArgs := [unset,unset,unset,unset,this.win.hwnd]
 
+    this.winNotifyEvent.moveSizeStart()
     while GetKeyState(this.hk, "P") {
       MouseGetPos(&currentX, &currentY)
       deltaX := currentX - this.mouse.startingX
@@ -152,6 +154,7 @@ class WinCardinalMover {
       }
       WinMove(moveArgs*)
     }
+    this.winNotifyEvent.moveSizeEnd()
 
     UpdateNorthConstraint() {
       moveArgs[Y_INDEX] := Max(this.win.y + deltaY, this.win.offsets.top)
@@ -247,5 +250,14 @@ class WinCardinalMover {
   static snap(direction, callback) {
     this.snaps[direction] := callback
     return this
+  }
+
+  class winNotifyEvent {
+    static EVENT_SYSTEM_MOVESIZESTART := 0x000A,
+      EVENT_SYSTEM_MOVESIZEEND := 0x000B
+
+    static moveSizeEnd() => WinCardinalMover.winNotifyEvent.notify(this.EVENT_SYSTEM_MOVESIZEEND)
+    static moveSizeStart() => WinCardinalMover.winNotifyEvent.notify(this.EVENT_SYSTEM_MOVESIZESTART)
+    static notify(event) => DllCall("NotifyWinEvent", "UInt", event, "Ptr", WinCardinalMover.win.hwnd, "Int", 0, "Int", 0)
   }
 }

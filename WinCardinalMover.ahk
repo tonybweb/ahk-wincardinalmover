@@ -9,8 +9,8 @@
  *
  * @author tonybweb
  * @link (https://github.com/tonybweb/ahk-wincardinalmover)
- * @date 2025/06/19
- * @version 1.2.0
+ * @date 2026/08/28
+ * @version 1.2.1
  *
  * REMARKS
  * - SetWinDelay impacts the speed of WinMove, the default value of 100ms
@@ -36,7 +36,6 @@ class WinCardinalMover {
     DOUBLE_CLICK_DELAY := 250,
     DWMWA_EXTENDED_FRAME_BOUNDS := 9,
     EDGE_MULTIPLIER := 0.20,
-    HALF_HEIGHT := A_ScreenHeight / 2, HALF_WIDTH := A_ScreenWidth / 2,
     TASKBAR_HEIGHT := 40,
     WIN_DELAY := 1
 
@@ -79,6 +78,9 @@ class WinCardinalMover {
       this.on := 0
     }
   }
+
+  static HALF_HEIGHT => A_ScreenHeight / 2
+  static HALF_WIDTH => A_ScreenWidth / 2
 
   static doubleClicked() {
     switch (this.direction) {
